@@ -136,7 +136,11 @@ def search_and_remove_old_venvs(
                 logger.info(
                     f"   📅 Last modified: {last_modified.strftime('%Y-%m-%d')}",
                 )
-                logger.info(f"   💾 Size: {size_mb:.2f} MB")
+                if size_mb > 1000:
+                    size_gb = size_mb / 1024
+                    logger.info(f"   💾 Size: {size_gb:.2f} GB")
+                else:
+                    logger.info(f"   💾 Size: {size_mb:.2f} MB")
 
                 if not dry_run:
                     try:
@@ -219,7 +223,11 @@ def main(directory: Path, days: int = 180, execute: bool = False) -> None:
 
     logger.info("\nResult summary:")
     logger.info(f"- Detected old virtual environments: {removed_count}")
-    logger.info(f"- Freed total capacity: {size_mb:.2f} MB")
+    if size_mb > 1000:
+        size_gb = size_mb / 1024
+        logger.info(f"- Freed total capacity: {size_gb:.2f} GB")
+    else:
+        logger.info(f"- Freed total capacity: {size_mb:.2f} MB")
 
     if not execute and removed_count > 0:
         logger.info("\nTo actually delete, add the --execute flag")
