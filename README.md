@@ -51,25 +51,38 @@ A directory is considered for deletion when:
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv//)
+- Python 3.12 or higher
+- [uv](https://docs.astral.sh/uv/) - Python package manager
+
+## Installation
+
+Install dependencies:
+
+```bash
+uv sync
+```
 
 ## Usage
 
-1. Install dependencies
+### Basic Usage
 
-   ```bash
-   uv sync
-   ```
+Dry run (preview what will be deleted):
 
-2. Run the script
+```bash
+uv run main.py --directory <path> --days <days>
+```
 
-   ```bash
-   uv run main.py --directory <path> --days <days> --execute
-   ```
+Execute deletions:
 
-   - `--directory`: Path to the directory to search for virtual environments.
-   - `--days`: Days threshold to remove old venvs. Defaults to 180 days.
-   - `--execute`: If this flag is specified, actually delete the virtual environments.
+```bash
+uv run main.py --directory <path> --days <days> --execute
+```
+
+### Options
+
+- `--directory`: Path to the directory to search for virtual environments (required)
+- `--days`: Days threshold to remove old venvs (default: 180)
+- `--execute`: Actually delete the virtual environments (without this flag, it's a dry run)
 
 ## Examples
 
@@ -110,8 +123,59 @@ Result summary:
 2025-05-07 08:51:04.600 | INFO     | __main__:main:222 - - Freed total capacity: 13468.58 MB
 ```
 
-### Search and delete old venvs in the current directory
+### Execute deletion
 
 ```bash
 uv run main.py --directory ../dev --days 100 --execute
 ```
+
+## Development
+
+### Code Quality
+
+Lint code with Ruff:
+
+```bash
+uv run ruff check .
+```
+
+Auto-fix linting issues:
+
+```bash
+uv run ruff check --fix .
+```
+
+Format code with Black:
+
+```bash
+uv run black .
+```
+
+Type check with mypy:
+
+```bash
+uv run mypy .
+```
+
+Run all checks with tox:
+
+```bash
+uv run tox
+```
+
+### Project Structure
+
+```
+.
+├── main.py         # Core logic and CLI entry point
+├── constants.py    # Configuration constants (cache dirs, package files)
+└── pyproject.toml  # Project configuration and dependencies
+```
+
+### Code Standards
+
+- Python 3.12+
+- Type hints required for all functions
+- Google-style docstrings
+- Line length: 79 characters
+- Use `pathlib.Path` for file operations
