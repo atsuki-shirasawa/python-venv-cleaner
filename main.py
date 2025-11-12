@@ -116,7 +116,7 @@ def search_and_remove_old_venvs(
         # check if it's a virtual environment
         if is_venv_directory(dir_path):
             # check if it's a cache directory
-            if dir_path.name in [".mypy_cache", ".ruf_cache"]:
+            if dir_path.name in CACHE_DIRS:
                 pass  # cache directory is always deleted
             else:
                 # check if it has python package management files
