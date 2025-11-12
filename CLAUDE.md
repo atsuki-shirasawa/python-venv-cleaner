@@ -97,3 +97,98 @@ This project enforces strict type hints and follows Google-style docstrings:
 - Use pathlib.Path for all file operations (enforced by Ruff PTH rules)
 
 The Ruff configuration includes extensive linting rules (pycodestyle, pyflakes, flake8-bugbear, flake8-bandit, isort, pydocstyle, pyupgrade) with auto-fix disabled for unused imports and variables to prevent accidental code removal.
+
+## Git Workflow
+
+### Commit Messages
+
+Follow Conventional Commits specification:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+Common types:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Test additions/modifications
+- `chore`: Maintenance tasks
+- `perf`: Performance improvements
+
+### Branch Naming
+
+Pattern: `{type}/{issue-number}-{short-description}`
+
+Examples:
+- `feature/123-add-user-authentication`
+- `fix/456-handle-permission-errors`
+- `docs/789-update-readme`
+
+### Pull Requests
+
+**Title Format**: `{type}({scope}): {description}`
+
+Example: `feat(auth): implement JWT authentication`
+
+**Description**: Follow the template in `.github/pull_request_template.md` when creating pull requests. The template includes sections for:
+- Overview
+- Related Issues
+- Type of Change
+- Testing checklist
+- Code Review Checklist
+- Additional Notes
+
+**Size Guidelines**:
+- Maximum 500 lines of code changes per PR
+- Split larger changes into multiple PRs for easier review
+
+**Approval Requirements**:
+- Minimum 1 approval from team members
+- All CI checks must pass (linting, type checking, tests)
+- No unresolved conversations
+
+**Merge Strategy**:
+1. **Squash and Merge** (Default)
+   - Clean commit history
+   - One commit per feature
+   - Commit message follows Conventional Commits
+
+2. **Rebase and Merge** (For dependent PRs)
+   - Preserve commit history
+   - Use when commits need to be kept separate
+
+**Required Labels**:
+- Size: `size/XS`, `size/S`, `size/M`, `size/L`, `size/XL`
+- Status: `status/ready-for-review`, `status/in-progress`, `status/blocked`
+- Type: `type/feature`, `type/bug`, `type/docs`, `type/refactor`
+- Priority: `priority/low`, `priority/medium`, `priority/high`, `priority/urgent`
+
+**Post-Merge Actions**:
+- Delete branch after successful merge
+- Update related issues
+- Deploy if applicable
+- Notify team members if needed
+
+## Implementation Notes
+
+### Cache Directory Handling
+
+Cache directories (`.mypy_cache`, `.ruff_cache`, `.pytest_cache`) are treated differently from virtual environments:
+
+- They don't require parent directories to have package management files (main.py:119-120)
+- They are always considered for deletion if older than the threshold
+- The special handling is in the `search_and_remove_old_venvs()` function
+
+### Directory Traversal
+
+The tool uses `base_dir.glob("**/")` to recursively find all directories (main.py:112). Key behaviors:
+
+- Symlinks are skipped to avoid following external links (main.py:113)
+- Directories are processed in sorted order by path length
+- Permission errors during size calculation are logged but don't stop execution (main.py:177-178)
