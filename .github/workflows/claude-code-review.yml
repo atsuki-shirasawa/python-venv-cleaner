@@ -1,57 +1,57 @@
-name: Claude Code Review
+# @format
 
+name: Claude Auto Review with Tracking
 on:
   pull_request:
-    types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
-  claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+  review:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write
       id-token: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          track_progress: true # ✨ Enables tracking comments
           prompt: |
+            You are a senior code reviewer. Review this pull request and provide comprehensive feedback.
+
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
+            REVIEW PROCESS:
+            1. Use `gh pr view` to understand the PR context
+            2. Use `gh pr diff` to examine the code changes
+            3. Reference CLAUDE.md and README.md for guidance on style and conventions
+            4. Create a pending review using `gh pr review --pending`
+            5. Add inline comments using `mcp__github_inline_comment__create_inline_comment` for specific code issues
+            6. Submit the review using `gh pr review --submit` with overall feedback
+
+            FOCUS AREAS:
             - Code quality and best practices
             - Potential bugs or issues
             - Performance considerations
-            - Security concerns
+            - Security implications
             - Test coverage
+            - Documentation updates if needed
+            - Error handling and edge cases
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            REVIEW GUIDELINES:
+            - Provide constructive feedback with specific suggestions for improvement
+            - Use inline comments to highlight specific areas of concern
+            - Acknowledge good practices and improvements
+            - Be respectful and educational in your feedback
+            - Consider the PR's scope and avoid scope creep suggestions
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            If the changes look good overall, approve the PR. If there are critical issues, request changes. Otherwise, provide comments for consideration.
 
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
