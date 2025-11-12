@@ -83,6 +83,83 @@ def get_last_modified_date(directory_path: Path) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(directory_path.stat().st_mtime)
 
 
+def should_process_directory(dir_path: Path) -> bool:
+    """Check if directory should be processed for deletion.
+
+    Args:
+        dir_path (Path): Directory path to check
+
+    Returns:
+        bool: True if directory should be processed, False otherwise
+    """
+    # Check if it's a virtual environment or cache directory
+    if not is_venv_directory(dir_path):
+        return False
+
+    # Cache directories are always processed
+    if dir_path.name in CACHE_DIRS:
+        return True
+
+    # For venvs, check if it has python package management files
+    if not has_python_package_files(dir_path):
+        logger.debug(
+            f"Skipping {dir_path}: No package management files found",
+        )
+        return False
+
+    return True
+
+
+def log_directory_info(
+    dir_path: Path,
+    last_modified: datetime.datetime,
+    dir_size: int,
+    dry_run: bool,
+) -> None:
+    """Log information about a directory to be removed.
+
+    Args:
+        dir_path (Path): Directory path
+        last_modified (datetime.datetime): Last modified date
+        dir_size (int): Directory size in bytes
+        dry_run (bool): True if dry run, False if actually remove
+    """
+    size_mb = dir_size / (1024 * 1024)
+
+    logger.info(f"🔎 Found old virtual environment: {dir_path}")
+    logger.info(
+        f"   📅 Last modified: {last_modified.strftime('%Y-%m-%d')}",
+    )
+
+    if size_mb > 1000:
+        size_gb = size_mb / 1024
+        logger.info(f"   💾 Size: {size_gb:.2f} GB")
+    else:
+        logger.info(f"   💾 Size: {size_mb:.2f} MB")
+
+    if dry_run:
+        logger.info("   🚫 Dry run: not deleted")
+
+
+def remove_directory(dir_path: Path) -> bool:
+    """Remove directory and log the result.
+
+    Args:
+        dir_path (Path): Directory path to remove
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        logger.info("   🗑️ Deleting...")
+        shutil.rmtree(dir_path)
+        logger.info("   ✅ Deleted")
+        return True
+    except Exception as e:
+        logger.error(f"   ❌ Delete error: {e}")
+        return False
+
+
 def search_and_remove_old_venvs(
     base_dir: Path,
     days_threshold: int,
@@ -113,49 +190,27 @@ def search_and_remove_old_venvs(
         if not dir_path.is_dir() or dir_path.is_symlink():
             continue
 
-        # check if it's a virtual environment
-        if is_venv_directory(dir_path):
-            # check if it's a cache directory
-            if dir_path.name in CACHE_DIRS:
-                pass  # cache directory is always deleted
-            else:
-                # check if it has python package management files
-                if not has_python_package_files(dir_path):
-                    logger.debug(
-                        f"Skipping {dir_path}: No package management files found",
-                    )
-                    continue
+        # Check if directory should be processed
+        if not should_process_directory(dir_path):
+            continue
 
-            last_modified = get_last_modified_date(dir_path)
-            dir_size = get_directory_size(dir_path)
+        # Get directory information
+        last_modified = get_last_modified_date(dir_path)
+        dir_size = get_directory_size(dir_path)
 
-            # check if the last modified date is older than the threshold
-            if last_modified < cutoff_date:
-                size_mb = dir_size / (1024 * 1024)  # convert bytes to MB
-                logger.info(f"🔎 Found old virtual environment: {dir_path}")
-                logger.info(
-                    f"   📅 Last modified: {last_modified.strftime('%Y-%m-%d')}",
-                )
-                if size_mb > 1000:
-                    size_gb = size_mb / 1024
-                    logger.info(f"   💾 Size: {size_gb:.2f} GB")
-                else:
-                    logger.info(f"   💾 Size: {size_mb:.2f} MB")
+        # Check if the directory is older than the threshold
+        if last_modified < cutoff_date:
+            log_directory_info(dir_path, last_modified, dir_size, dry_run)
 
-                if not dry_run:
-                    try:
-                        logger.info("   🗑️ Deleting...")
-                        shutil.rmtree(dir_path)
-                        logger.info("   ✅ Deleted")
-                        removed_count += 1
-                        total_size_freed += dir_size
-                    except Exception as e:
-                        logger.error(f"   ❌ Delete error: {e}")
-                else:
-                    logger.info("   🚫 Dry run: not deleted")
+            if not dry_run:
+                if remove_directory(dir_path):
                     removed_count += 1
                     total_size_freed += dir_size
-                logger.info("")
+            else:
+                removed_count += 1
+                total_size_freed += dir_size
+
+            logger.info("")
 
     return removed_count, total_size_freed
 

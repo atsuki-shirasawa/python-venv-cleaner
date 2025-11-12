@@ -81,9 +81,12 @@ Key functions in main.py:
 - `has_python_package_files()`: Validates parent directory contains Python project files
 - `get_last_modified_date()`: Retrieves directory modification timestamp
 - `get_directory_size()`: Calculates total directory size recursively
+- `should_process_directory()`: Determines if a directory should be processed for deletion
+- `log_directory_info()`: Logs information about directories to be removed
+- `remove_directory()`: Handles directory deletion with error handling and logging
 - `search_and_remove_old_venvs()`: Main search and deletion logic with dry-run support
 
-The deletion logic uses a recursive glob pattern (`**/`) to traverse directories, checks each for venv/cache markers, validates the presence of package management files in the parent directory, and removes directories older than the threshold.
+The deletion logic uses a recursive glob pattern (`**/`) to traverse directories, checks each for venv/cache markers, validates the presence of package management files in the parent directory, and removes directories older than the threshold. The code is organized into separate functions for better maintainability and readability.
 
 ## Code Standards
 
@@ -181,14 +184,14 @@ Example: `feat(auth): implement JWT authentication`
 
 Cache directories (`.mypy_cache`, `.ruff_cache`, `.pytest_cache`) are treated differently from virtual environments:
 
-- They don't require parent directories to have package management files (main.py:119-120)
+- They don't require parent directories to have package management files (main.py:99-104)
 - They are always considered for deletion if older than the threshold
-- The special handling is in the `search_and_remove_old_venvs()` function
+- The special handling is in the `should_process_directory()` function
 
 ### Directory Traversal
 
-The tool uses `base_dir.glob("**/")` to recursively find all directories (main.py:112). Key behaviors:
+The tool uses `base_dir.glob("**/")` to recursively find all directories (main.py:189). Key behaviors:
 
-- Symlinks are skipped to avoid following external links (main.py:113)
+- Symlinks are skipped to avoid following external links (main.py:190)
 - Directories are processed in sorted order by path length
-- Permission errors during size calculation are logged but don't stop execution (main.py:177-178)
+- Permission errors during size calculation are logged but don't stop execution (main.py:232)
