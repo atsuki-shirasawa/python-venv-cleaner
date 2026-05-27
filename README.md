@@ -47,7 +47,9 @@ A directory is considered for deletion when:
    - `conda-env.yml`
    - Or if it's inside a `.tox` directory
 
-4. AND it was last modified more than the specified number of days ago (default: 180 days).
+4. AND the owning project's source code has not been modified for more than the specified number of days (default: 180 days).
+
+   "Source code" age is determined by the latest mtime of files under the project directory, excluding venv/cache directories themselves and other tool-managed paths (`.git`, `.tox`, `__pycache__`, `node_modules`). This way, regenerating caches or re-running `uv sync` does not falsely refresh the project's age.
 
 ## Requirements
 
@@ -96,31 +98,29 @@ uv run main.py --directory ../dev --days 100
 
 Log Example:
 
-```bash
-2025-05-07 08:50:00.229 | INFO     | __main__:main:208 - Searching for virtual environments older than 100 days in '..'...
-2025-05-07 08:50:00.229 | INFO     | __main__:search_and_remove_old_venvs:107 - Searching for virtual environments older than 2025-01-27
-2025-05-07 08:50:00.229 | INFO     | __main__:search_and_remove_old_venvs:110 - Dry run: yes
+```text
+INFO | Searching for virtual environments older than 100 days in '../dev'...
+INFO | Searching for virtual environments older than 2026-02-16
+INFO | Dry run: yes
 
-2025-05-07 08:50:16.230 | INFO     | __main__:search_and_remove_old_venvs:135 - 🔎 Found old virtual environment: ../hoge-project/app/.venv
-2025-05-07 08:50:16.231 | INFO     | __main__:search_and_remove_old_venvs:136 -    📅 Last modified: 2025-01-09
-2025-05-07 08:50:16.231 | INFO     | __main__:search_and_remove_old_venvs:139 -    💾 Size: 1028.01 MB
-2025-05-07 08:50:16.231 | INFO     | __main__:search_and_remove_old_venvs:151 -    🚫 Dry run: not deleted
-2025-05-07 08:50:16.231 | INFO     | __main__:search_and_remove_old_venvs:154 -
-2025-05-07 08:50:16.947 | INFO     | __main__:search_and_remove_old_venvs:135 - 🔎 Found old virtual environment: ../hoge-project/app/.mypy_cache
-2025-05-07 08:50:16.947 | INFO     | __main__:search_and_remove_old_venvs:136 -    📅 Last modified: 2025-01-09
-2025-05-07 08:50:16.947 | INFO     | __main__:search_and_remove_old_venvs:139 -    💾 Size: 356.78 MB
-2025-05-07 08:50:16.947 | INFO     | __main__:search_and_remove_old_venvs:151 -    🚫 Dry run: not deleted
-2025-05-07 08:50:16.948 | INFO     | __main__:search_and_remove_old_venvs:154 -
-2025-05-07 08:50:17.221 | INFO     | __main__:search_and_remove_old_venvs:135 - 🔎 Found old virtual environment: ../hoge-project/app/.mypy_cache
-2025-05-07 08:50:17.221 | INFO     | __main__:search_and_remove_old_venvs:136 -    📅 Last modified: 2025-01-24
-2025-05-07 08:50:17.221 | INFO     | __main__:search_and_remove_old_venvs:139 -    💾 Size: 81.31 MB
-2025-05-07 08:50:17.221 | INFO     | __main__:search_and_remove_old_venvs:151 -    🚫 Dry run: not deleted
-2025-05-07 08:50:17.221 | INFO     | __main__:search_and_remove_old_venvs:154 -
+INFO | 🔎 Found old directory: ../dev/hoge-project/app/.venv
+INFO |    📅 Last modified: 2025-12-09
+INFO |    💾 Size: 1.00 GB
+INFO |    🚫 Dry run: not deleted
+
+INFO | 🔎 Found old directory: ../dev/hoge-project/app/.mypy_cache
+INFO |    📅 Last modified: 2025-12-09
+INFO |    💾 Size: 356.78 MB
+INFO |    🚫 Dry run: not deleted
+
 ...
-2025-05-07 08:51:04.599 | INFO     | __main__:main:220 -
+
+INFO |
 Result summary:
-2025-05-07 08:51:04.600 | INFO     | __main__:main:221 - - Detected old virtual environments: 63
-2025-05-07 08:51:04.600 | INFO     | __main__:main:222 - - Freed total capacity: 13468.58 MB
+INFO | - Detected old virtual environments: 63
+INFO | - Freed total capacity: 13.15 GB
+
+INFO | To actually delete, add the --execute flag
 ```
 
 ### Execute deletion

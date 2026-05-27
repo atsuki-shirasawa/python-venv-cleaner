@@ -11,7 +11,7 @@ Python Virtual Environment Cleaner is a CLI tool that searches for and deletes o
 The tool identifies virtual environments and cache directories based on specific markers (pyvenv.cfg, bin/activate, Scripts/activate.bat, or cache directory names) and only deletes them if:
 
 1. They are in a directory with Python package management files (pyproject.toml, requirements.txt, etc.)
-2. They haven't been modified in a specified number of days (default: 180)
+2. The owning project's source code has not been modified in a specified number of days (default: 180). "Last code modification" is the latest mtime of files under the project directory, ignoring venv/cache/.git/.tox/__pycache__/node_modules so that tool-managed files don't mask the real code mtime.
 
 ## Development Setup
 
@@ -79,14 +79,16 @@ Key functions in main.py:
 
 - `is_venv_directory()`: Identifies virtual environments and cache directories
 - `has_python_package_files()`: Validates parent directory contains Python project files
-- `get_last_modified_date()`: Retrieves directory modification timestamp
+- `get_project_directory()`: Resolves the owning project directory of a candidate (handles `.tox`)
+- `get_latest_code_mtime()`: Finds the latest mtime of source files in a project, pruning venv/cache/.git/.tox/__pycache__/node_modules
 - `get_directory_size()`: Calculates total directory size recursively
+- `format_size()`: Formats a byte count as MB or GB
 - `should_process_directory()`: Determines if a directory should be processed for deletion
 - `log_directory_info()`: Logs information about directories to be removed
 - `remove_directory()`: Handles directory deletion with error handling and logging
 - `search_and_remove_old_venvs()`: Main search and deletion logic with dry-run support
 
-The deletion logic uses a recursive glob pattern (`**/`) to traverse directories, checks each for venv/cache markers, validates the presence of package management files in the parent directory, and removes directories older than the threshold. The code is organized into separate functions for better maintainability and readability.
+The deletion logic uses a recursive glob pattern (`**/`) to traverse directories, checks each for venv/cache markers, validates the presence of package management files in the parent directory, computes the owning project's latest source mtime, and removes directories whose project has been untouched longer than the threshold. The code is organized into separate functions for better maintainability and readability.
 
 ## Code Standards
 
@@ -184,14 +186,18 @@ Example: `feat(auth): implement JWT authentication`
 
 Cache directories (`.mypy_cache`, `.ruff_cache`, `.pytest_cache`) are treated differently from virtual environments:
 
-- They don't require parent directories to have package management files (main.py:99-104)
-- They are always considered for deletion if older than the threshold
+- They don't require parent directories to have package management files
+- They are considered for deletion when the owning project's code hasn't been modified for longer than the threshold (the same rule as venvs)
 - The special handling is in the `should_process_directory()` function
+
+### Age Determination
+
+`get_latest_code_mtime()` defines a project's "age" as the latest mtime of source files under the project directory. The walk prunes any subdirectory that looks like a venv or cache (`is_venv_directory()`) plus `.git`, `.tox`, `__pycache__` and `node_modules`, so that running tools like `mypy`, `pytest` or `uv sync` does not falsely refresh the age. Results are memoized per project directory inside `search_and_remove_old_venvs()` to avoid repeated walks when multiple candidates (e.g. `.venv` and `.mypy_cache`) share a project.
 
 ### Directory Traversal
 
-The tool uses `base_dir.glob("**/")` to recursively find all directories (main.py:189). Key behaviors:
+The tool uses `base_dir.glob("**/")` in `search_and_remove_old_venvs()` to recursively find all directories. Key behaviors:
 
-- Symlinks are skipped to avoid following external links (main.py:190)
+- Symlinks are skipped to avoid following external links
 - Directories are processed in sorted order by path length
-- Permission errors during size calculation are logged but don't stop execution (main.py:232)
+- Permission errors during size calculation are caught in `get_directory_size()` and logged at debug level, so they don't stop execution
